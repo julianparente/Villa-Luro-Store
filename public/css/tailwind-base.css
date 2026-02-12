@@ -1,0 +1,35 @@
+/* Tailwind CSS base config for perfumería de lujo */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #F9F9F9;
+    color: #1A1A1A;
+}
+
+h1, h2, h3, h4, h5 {
+    font-family: 'Playfair Display', serif;
+}
+
+/* Tailwind utility classes will be injected by build process */
+
+/* Gold accent for buttons and elements */
+.btn-gold {
+    @apply bg-[#D4AF37] text-white font-semibold rounded;
+}
+
+.shadow-soft {
+    @apply shadow-md;
+}
+
+.transition-hover {
+    @apply transition duration-200 ease-in-out;
+}
+
+/* Mensajes de éxito y error */
+.alert-success {
+    @apply bg-green-100 text-green-700 p-2 rounded mb-4 text-center text-sm font-semibold;
+}
+.alert-error {
+    @apply bg-red-100 text-red-700 p-2 rounded mb-4 text-center text-sm font-semibold;
+}

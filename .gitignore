@@ -1,0 +1,26 @@
+# Archivos y carpetas a ignorar en Git
+
+# Configuración local y credenciales
+config/db.php
+config/session.php
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Carpeta de uploads
+public/uploads/
+
+# Archivos temporales
+*.log
+*.tmp
+
+# Node y dependencias (si se usan)
+node_modules/
+
+# Archivos de compilación
+public/js/*.js
+!public/js/*.min.js
+
+# Otros
+.env
