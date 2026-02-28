@@ -258,16 +258,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            // Estas funciones están definidas globalmente en app.js
-                            if (typeof updateCartCount === 'function') updateCartCount(data.cart_count);
-                            if (typeof showToast === 'function') showToast(data.message, 'success');
+                            // Actualizar contador del carrito (Desktop)
+                            const cartCount = data.cart_count;
+                            let countEl = document.getElementById('cart-count');
+                            
+                            if (countEl) {
+                                countEl.textContent = cartCount;
+                                if (cartCount > 0) countEl.classList.remove('hidden');
+                            } else if (cartCount > 0) {
+                                // Crear badge si no existe
+                                const container = document.getElementById('cart-icon-container');
+                                if (container) {
+                                    const span = document.createElement('span');
+                                    span.id = 'cart-count';
+                                    span.className = 'absolute -top-2 -right-3 bg-luxury-gold text-white text-[9px] rounded-full h-4 w-4 flex items-center justify-center';
+                                    span.textContent = cartCount;
+                                    container.appendChild(span);
+                                }
+                            }
+
+                            showToastNotification(data.message, 'success');
                         } else {
-                            if (typeof showToast === 'function') showToast(data.message || 'No se pudo añadir el producto.', 'error');
+                            showToastNotification(data.message || 'No se pudo añadir el producto.', 'error');
                         }
                     })
                     .catch(error => {
                         console.error('Error al añadir al carrito:', error);
-                        if (typeof showToast === 'function') showToast('Ocurrió un error de conexión.', 'error');
+                        showToastNotification('Ocurrió un error de conexión.', 'error');
                     })
                     .finally(() => {
                         button.disabled = false;
@@ -275,6 +292,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
             }
         });
+    }
+
+    function showToastNotification(message, type = 'success') {
+        // Eliminar toasts anteriores
+        const existingToast = document.querySelector('.custom-toast');
+        if (existingToast) existingToast.remove();
+
+        const toast = document.createElement('div');
+        toast.className = `custom-toast fixed bottom-5 right-5 px-6 py-4 rounded-lg shadow-xl z-50 flex items-center gap-3 transition-all duration-500 transform translate-y-10 opacity-0 ${type === 'success' ? 'bg-luxury-matte text-white border-l-4 border-luxury-gold' : 'bg-red-500 text-white'}`;
+        
+        const icon = type === 'success' ? '<i class="fas fa-check-circle text-luxury-gold"></i>' : '<i class="fas fa-exclamation-circle"></i>';
+        
+        toast.innerHTML = `${icon}<span class="font-sans text-sm font-medium">${message}</span>`;
+        
+        document.body.appendChild(toast);
+
+        // Animación entrada
+        requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
+
+        // Auto eliminar
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-y-10');
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
     }
 });
 </script>
