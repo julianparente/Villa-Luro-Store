@@ -31,8 +31,7 @@
                 <h4 class="text-[10px] uppercase tracking-[0.2em] mb-6 font-bold text-white">Contacto</h4>
                 <ul class="space-y-4 text-sm font-light text-gray-400">
                     <li><a href="https://instagram.com/villalurostore" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 hover:text-luxury-gold transition-colors"><i class="fab fa-instagram w-4 text-center"></i><span>@villalurostore</span></a></li>
-                    <li><a href="mailto:contacto@villalurostore.com" class="flex items-center gap-3 hover:text-luxury-gold transition-colors"><i class="far fa-envelope w-4 text-center"></i><span>contacto@villalurostore.com</span></a></li>
-                    <li><a href="tel:+541112345678" class="flex items-center gap-3 hover:text-luxury-gold transition-colors"><i class="fas fa-phone w-4 text-center"></i><span>+54 11 1234 5678</span></a></li>
+                    <li><a href="https://wa.me/5491123700575" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 hover:text-luxury-gold transition-colors"><i class="fab fa-whatsapp w-4 text-center"></i><span>+54 9 11 2370-0575</span></a></li>
                 </ul>
             </div>
 
@@ -52,6 +51,10 @@
         </div>
     </div>
 </footer>
-<script src="public/js/app.js"></script>
+
+<!-- Botón Flotante de WhatsApp -->
+<a href="https://wa.me/5491123700575?text=Hola!%20Me%20interesan%20sus%20productos." target="_blank" rel="noopener noreferrer" class="fixed bottom-6 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-lg hover:scale-110 transition-transform duration-300 z-50 w-14 h-14 flex items-center justify-center">
+    <i class="fab fa-whatsapp text-3xl"></i>
+</a>
 </body>
 </html>

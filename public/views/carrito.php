@@ -10,7 +10,7 @@ $mensajeCarrito = '';
 // --- INICIO: Lógica de POST ---
 // Se mueve al principio para que los cambios se reflejen en la misma carga de página.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['update']) && isset($_POST['cantidad']) && isset($_POST['item_id'])) {
+    if (isset($_POST['update'])) {
         $cantidad = max(1, (int)$_POST['cantidad']);
         $item_id = (int)$_POST['item_id'];
         if (isLoggedIn()) {
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $mensajeCarrito = 'Cantidad actualizada correctamente.';
     }
-    if (isset($_POST['delete']) && isset($_POST['item_id'])) {
+    if (isset($_POST['delete'])) {
         $item_id = (int)$_POST['item_id'];
         if (isLoggedIn()) {
             $stmt = $pdo->prepare("DELETE FROM carrito WHERE id = ?");

@@ -33,6 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Todos los campos son obligatorios.';
             } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $error = 'El email no es válido.';
+            } elseif (strlen($password) < 6) {
+                $error = '¡Ups! Tu contraseña es muy corta. Necesita al menos 6 caracteres para ser segura. Intenta combinar letras, números y símbolos.';
             } elseif ($password !== $password2) {
                 $error = 'Las contraseñas no coinciden.';
             } else {
@@ -115,7 +117,7 @@ $user = null;
 $public_protected_pages = ['mi-cuenta', 'historial-pedidos', 'finalizar-compra'];
 $admin_pages = [
     'admin_dashboard', 'admin_productos', 'admin_producto_form', 
-    'admin_marcas', 'admin_pedidos', 'admin_suscripciones', 'admin_producto_delete'
+    'admin_marcas', 'admin_pedidos', 'admin_suscripciones', 'admin_producto_delete', 'admin_config'
 ];
 $all_protected_pages = array_merge($public_protected_pages, $admin_pages);
 
@@ -211,7 +213,7 @@ if (in_array($page, $admin_pages)) {
         }
     </script>';
     echo '</head><body class="bg-gray-100">';
-    echo '<div class="flex min-h-screen">';
+    echo '<div class="flex flex-col md:flex-row min-h-screen">';
     
     $sidebar_path = find_path('admin_sidebar.php');
     if ($sidebar_path) {

@@ -19,8 +19,8 @@
                 <form method="post" aria-label="Formulario de registro">
                     <input type="text" name="nombre" placeholder="Nombre Completo" required class="w-full bg-transparent border-b py-3 px-1 mb-6 text-sm focus:outline-none focus:border-luxury-gold transition-colors">
                     <input type="email" name="email" placeholder="Correo Electrónico" required class="w-full bg-transparent border-b py-3 px-1 mb-6 text-sm focus:outline-none focus:border-luxury-gold transition-colors">
-                    <input type="password" name="password" placeholder="Contraseña" required class="w-full bg-transparent border-b py-3 px-1 mb-6 text-sm focus:outline-none focus:border-luxury-gold transition-colors">
-                    <input type="password" name="password2" placeholder="Confirmar Contraseña" required class="w-full bg-transparent border-b py-3 px-1 mb-8 text-sm focus:outline-none focus:border-luxury-gold transition-colors">
+                    <input type="password" name="password" id="password-registro" placeholder="Contraseña (mínimo 6 caracteres)" required class="w-full bg-transparent border-b py-3 px-1 mb-6 text-sm focus:outline-none focus:border-luxury-gold transition-colors">
+                    <input type="password" name="password2" id="password2-registro" placeholder="Confirmar Contraseña" required class="w-full bg-transparent border-b py-3 px-1 mb-8 text-sm focus:outline-none focus:border-luxury-gold transition-colors">
                     <button type="submit" class="w-full bg-luxury-matte text-white py-4 text-[10px] uppercase tracking-widest font-bold hover:bg-luxury-gold transition-all duration-500">Crear Cuenta</button>
                 </form>
                 <div class="mt-8 text-center text-xs text-gray-500">
@@ -28,5 +28,29 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const registroForm = document.querySelector('form[aria-label="Formulario de registro"]');
+    const passwordInput = document.getElementById('password-registro');
+    const password2Input = document.getElementById('password2-registro');
+
+    // Asegurarse de que showToastNotification esté disponible
+    if (registroForm && passwordInput && password2Input && typeof showToastNotification === 'function') {
+        registroForm.addEventListener('submit', function(e) {
+            if (passwordInput.value.length < 6) {
+                e.preventDefault(); // Detener el envío del formulario
+                showToastNotification('¡Ups! Tu contraseña es muy corta. Necesita al menos 6 caracteres para ser segura. Intenta combinar letras, números y símbolos.', 'error');
+            } else if (passwordInput.value !== password2Input.value) {
+                e.preventDefault(); // Detener el envío del formulario
+                showToastNotification('Las contraseñas no coinciden. Por favor, verifícalas.', 'error');
+            }
+            // Si todo está bien, el formulario se enviará normalmente
+        });
+    }
+});
+</script>
     </div>
 </div>

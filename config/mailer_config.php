@@ -7,23 +7,27 @@ use PHPMailer\PHPMailer\Exception;
 // --- Carga de PHPMailer ---
 $composer_autoload = __DIR__ . '/../vendor/autoload.php';
 
+// 1. Intentar cargar vía Composer
 if (file_exists($composer_autoload)) {
-    // Método 1 (Recomendado): Carga a través de Composer
     require_once $composer_autoload;
-} else {
-    // Método 2: Carga manual (si no usas Composer)
-    // Asegúrate de que los archivos de PHPMailer estén en 'vendor/phpmailer/src/'
+}
+
+// 2. Si la clase no se cargó (Composer falló o no se usó), intentar carga manual
+if (!class_exists(PHPMailer::class)) {
     $manual_path = __DIR__ . '/../vendor/phpmailer/src/';
-    if (!file_exists($manual_path . 'PHPMailer.php')) {
-        die("<h1>Error Crítico: Librería PHPMailer no encontrada.</h1><p>Por favor, instale las dependencias ejecutando <code>composer install</code> o <code>composer require phpmailer/phpmailer</code> en la raíz del proyecto, o descargue PHPMailer manualmente y colóquelo en la carpeta <code>/vendor/phpmailer/</code>.</p>");
+    // Verificar si existe el archivo antes de incluir
+    if (file_exists($manual_path . 'PHPMailer.php')) {
+        require_once $manual_path . 'Exception.php';
+        require_once $manual_path . 'PHPMailer.php';
+        require_once $manual_path . 'SMTP.php';
     }
-    require_once $manual_path . 'Exception.php';
-    require_once $manual_path . 'PHPMailer.php';
-    require_once $manual_path . 'SMTP.php';
 }
 
 function getMailer(): PHPMailer
 {
+    if (!class_exists(PHPMailer::class)) {
+        throw new \Exception("La librería PHPMailer no se encuentra instalada.");
+    }
     $mail = new PHPMailer(true);
 
     // Configuración del servidor SMTP (usando Mailtrap como ejemplo)

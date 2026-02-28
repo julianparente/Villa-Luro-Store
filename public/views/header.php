@@ -23,6 +23,7 @@ if (isLoggedIn()) {
     <meta name="description" content="Catálogo y venta de perfumes de lujo.">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="public/js/app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="public/css/custom.css">
     <script>
@@ -47,7 +48,7 @@ if (isLoggedIn()) {
     <header class="sticky-header border-b border-gray-200 relative">
         <div class="container mx-auto flex justify-between items-center py-6 px-6">
             <a href="index.php" class="flex items-center gap-3">
-                <img src="public/img/logo.png" alt="Villa Luro Store Logo" class="h-20">
+                <img src="<?= get_config('logo', 'public/img/logo.png') ?>" alt="Villa Luro Store Logo" class="h-20 object-contain">
                 <span class="font-serif text-2xl tracking-tighter font-bold uppercase">Villa Luro Store</span>
             </a>
             

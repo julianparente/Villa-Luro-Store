@@ -39,8 +39,15 @@ $datos_pedido = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
     $nombre = trim($_POST['nombre'] ?? '');
-    $direccion = trim($_POST['direccion'] ?? '');
     $email = trim($_POST['email'] ?? '');
+    $tipo_envio = $_POST['tipo_envio'] ?? 'domicilio';
+
+    if ($tipo_envio === 'coordinar') {
+        $direccion = 'A coordinar con el vendedor (WhatsApp)';
+    } else {
+        $direccion = trim($_POST['direccion'] ?? '');
+    }
+
     $stockError = false;
     // Validar stock antes de procesar
     foreach ($carrito as $item) {
@@ -55,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
     }
     if ($stockError) {
         $mensaje = 'Uno o más productos no tienen suficiente stock para completar el pedido.';
-    } elseif (!$nombre || !$direccion || !$email) {
-        $mensaje = 'Por favor, completa todos los datos de envío.';
+    } elseif (!$nombre || !$email || ($tipo_envio === 'domicilio' && !$direccion)) {
+        $mensaje = 'Por favor, completa todos los datos requeridos.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $mensaje = 'El email no es válido.';
     } else {
@@ -102,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
                     <p>Hola <strong>$nombre</strong>, hemos recibido tu pedido <strong>#$pedido_id</strong>.</p>
                     <p>Para finalizar el proceso, por favor realiza la transferencia bancaria a la siguiente cuenta:</p>
                     <div style='background-color: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin: 20px 0;'>
-                        <p style='margin: 5px 0;'><strong>Banco:</strong> Banco Galicia</p>
+                        <p style='margin: 5px 0;'><strong>Banco:</strong> Banco Provincia</p>
                         <p style='margin: 5px 0;'><strong>CBU:</strong> 0070123400000012345678</p>
                         <p style='margin: 5px 0;'><strong>Alias:</strong> VILLALURO.STORE</p>
                         <p style='margin: 5px 0;'><strong>Titular:</strong> Villa Luro Store S.A.</p>
@@ -114,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
                 </div>";
                 
                 $mail->send();
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 error_log("Error enviando email: " . $e->getMessage());
             }
         }
@@ -158,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
                         <div class="absolute top-0 left-0 w-1 h-full bg-luxury-gold"></div>
                         <h3 class="font-serif text-xl mb-4 text-luxury-matte">Datos para Transferencia</h3>
                         <div class="space-y-3 text-sm text-gray-600">
-                            <div class="flex justify-between border-b border-gray-100 pb-2"><span>Banco:</span> <span class="font-bold text-gray-800">Banco Galicia</span></div>
+                            <div class="flex justify-between border-b border-gray-100 pb-2"><span>Banco:</span> <span class="font-bold text-gray-800">Banco Provincia</span></div>
                             <div class="flex justify-between border-b border-gray-100 pb-2"><span>Titular:</span> <span class="font-bold text-gray-800">Villa Luro Store S.A.</span></div>
                             <div class="flex justify-between border-b border-gray-100 pb-2"><span>CBU:</span> <span class="font-mono font-bold text-gray-800">0070123400000012345678</span></div>
                             <div class="flex justify-between border-b border-gray-100 pb-2"><span>Alias:</span> <span class="font-bold text-luxury-gold">VILLALURO.STORE</span></div>
@@ -221,7 +228,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
                                    placeholder="Ej. juan@example.com">
                         </div>
 
-                        <div class="group">
+                        <!-- Selección de Envío -->
+                        <div class="py-2">
+                            <label class="block text-[10px] uppercase tracking-widest text-gray-400 mb-4">Método de Entrega</label>
+                            <div class="flex flex-col sm:flex-row gap-6">
+                                <label class="flex items-center cursor-pointer group">
+                                    <input type="radio" name="tipo_envio" value="domicilio" checked class="hidden peer" onchange="toggleAddress(true)">
+                                    <span class="w-4 h-4 border border-gray-300 rounded-full mr-3 peer-checked:bg-luxury-gold peer-checked:border-luxury-gold transition-all"></span>
+                                    <span class="text-sm group-hover:text-luxury-gold transition-colors">Envío a Domicilio</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer group">
+                                    <input type="radio" name="tipo_envio" value="coordinar" class="hidden peer" onchange="toggleAddress(false)">
+                                    <span class="w-4 h-4 border border-gray-300 rounded-full mr-3 peer-checked:bg-luxury-gold peer-checked:border-luxury-gold transition-all"></span>
+                                    <span class="text-sm group-hover:text-luxury-gold transition-colors">Coordinar (WhatsApp)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="group" id="address-container">
                             <label for="direccion" class="block text-[10px] uppercase tracking-widest text-gray-400 mb-2 group-focus-within:text-luxury-gold transition-colors">Dirección de Entrega</label>
                             <input type="text" id="direccion" name="direccion" required 
                                    class="w-full border-b border-gray-200 py-3 text-lg focus:outline-none focus:border-luxury-gold transition-colors bg-transparent placeholder-gray-300 font-light"
@@ -286,6 +310,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
 </div>
 
 <script>
+function toggleAddress(show) {
+    const container = document.getElementById('address-container');
+    const input = document.getElementById('direccion');
+    if (show) {
+        container.classList.remove('hidden');
+        input.required = true;
+    } else {
+        container.classList.add('hidden');
+        input.required = false;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('checkout-form');
     if (form) {

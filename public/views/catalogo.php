@@ -91,12 +91,14 @@ $initial_perfume_count = count($perfumes);
                 <?php foreach ($perfumes as $perfume): ?>
                     <div class="group">
                         <div class="relative overflow-hidden bg-white mb-8 aspect-[3/4] shadow-sm">
-                    <img src="<?= htmlspecialchars($perfume['imagen_url']) ?>" 
-                         alt="<?= htmlspecialchars($perfume['nombre']) ?>" 
-                         class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                    <a href="index.php?page=producto&id=<?= $perfume['id'] ?>" class="block w-full h-full">
+                        <img src="<?= htmlspecialchars($perfume['imagen_url']) ?>" 
+                             alt="<?= htmlspecialchars($perfume['nombre']) ?>" 
+                             class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                    </a>
                     
-                    <div class="absolute inset-0 bg-luxury-matte/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
-                        <form method="post" action="index.php?page=api_add_to_cart" class="add-to-cart-form">
+                    <div class="absolute inset-0 bg-luxury-matte/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center pointer-events-none">
+                        <form method="post" action="index.php?page=api_add_to_cart" class="add-to-cart-form pointer-events-auto">
                             <input type="hidden" name="perfume_id" value="<?= $perfume['id'] ?>">
                             <button type="submit" 
                                     class="bg-white text-luxury-matte px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-luxury-gold hover:text-white transition-colors duration-300"
@@ -109,7 +111,9 @@ $initial_perfume_count = count($perfumes);
                 
                 <div class="text-center">
                     <p class="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-1"><?= htmlspecialchars($perfume['marca_nombre']) ?></p>
-                    <h2 class="font-serif text-xl mb-2"><?= htmlspecialchars($perfume['nombre']) ?></h2>
+                    <h2 class="font-serif text-xl mb-2">
+                        <a href="index.php?page=producto&id=<?= $perfume['id'] ?>" class="hover:text-luxury-gold transition-colors"><?= htmlspecialchars($perfume['nombre']) ?></a>
+                    </h2>
                     <p class="text-luxury-gold font-semibold tracking-widest">$<?= number_format($perfume['precio'], 2) ?></p>
                 </div>
             </div>
@@ -210,9 +214,11 @@ document.addEventListener('DOMContentLoaded', function() {
         return `
             <div class="group">
                 <div class="relative overflow-hidden bg-white mb-8 aspect-[3/4] shadow-sm">
-                    <img src="${escapeHTML(perfume.imagen_url)}" alt="${escapeHTML(perfume.nombre)}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
-                    <div class="absolute inset-0 bg-luxury-matte/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center">
-                        <form method="post" action="index.php?page=api_add_to_cart" class="add-to-cart-form">
+                    <a href="index.php?page=producto&id=${perfume.id}" class="block w-full h-full">
+                        <img src="${escapeHTML(perfume.imagen_url)}" alt="${escapeHTML(perfume.nombre)}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                    </a>
+                    <div class="absolute inset-0 bg-luxury-matte/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center pointer-events-none">
+                        <form method="post" action="index.php?page=api_add_to_cart" class="add-to-cart-form pointer-events-auto">
                             <input type="hidden" name="perfume_id" value="${perfume.id}">
                             <button type="submit" class="bg-white text-luxury-matte px-6 py-3 text-[10px] uppercase tracking-widest font-bold hover:bg-luxury-gold hover:text-white transition-colors duration-300" ${buttonDisabled}>
                                 ${buttonText}
@@ -222,7 +228,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="text-center">
                     <p class="text-[10px] uppercase tracking-[0.2em] text-gray-400 mb-1">${escapeHTML(perfume.marca_nombre)}</p>
-                    <h2 class="font-serif text-xl mb-2">${escapeHTML(perfume.nombre)}</h2>
+                    <h2 class="font-serif text-xl mb-2">
+                        <a href="index.php?page=producto&id=${perfume.id}" class="hover:text-luxury-gold transition-colors">${escapeHTML(perfume.nombre)}</a>
+                    </h2>
                     <p class="text-luxury-gold font-semibold tracking-widest">$${priceFormatted}</p>
                 </div>
             </div>
@@ -292,30 +300,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
             }
         });
-    }
-
-    function showToastNotification(message, type = 'success') {
-        // Eliminar toasts anteriores
-        const existingToast = document.querySelector('.custom-toast');
-        if (existingToast) existingToast.remove();
-
-        const toast = document.createElement('div');
-        toast.className = `custom-toast fixed bottom-5 right-5 px-6 py-4 rounded-lg shadow-xl z-50 flex items-center gap-3 transition-all duration-500 transform translate-y-10 opacity-0 ${type === 'success' ? 'bg-luxury-matte text-white border-l-4 border-luxury-gold' : 'bg-red-500 text-white'}`;
-        
-        const icon = type === 'success' ? '<i class="fas fa-check-circle text-luxury-gold"></i>' : '<i class="fas fa-exclamation-circle"></i>';
-        
-        toast.innerHTML = `${icon}<span class="font-sans text-sm font-medium">${message}</span>`;
-        
-        document.body.appendChild(toast);
-
-        // Animación entrada
-        requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
-
-        // Auto eliminar
-        setTimeout(() => {
-            toast.classList.add('opacity-0', 'translate-y-10');
-            setTimeout(() => toast.remove(), 500);
-        }, 3000);
     }
 });
 </script>

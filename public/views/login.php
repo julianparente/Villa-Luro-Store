@@ -4,7 +4,7 @@
 <div class="min-h-screen grid grid-cols-1 md:grid-cols-2">
     <!-- Columna Izquierda (Imagen) -->
     <div class="h-screen hidden md:block">
-        <img src="public/img/login.png" 
+        <img src="<?= get_config('login_image', 'public/img/login.png') ?>" 
              alt="Perfume bottle on a reflective surface" 
              class="w-full h-full object-cover">
     </div>
