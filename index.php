@@ -2,8 +2,10 @@
 // Definir la ruta raíz para una gestión de archivos consistente
 define('ROOT_PATH', __DIR__ . DIRECTORY_SEPARATOR);
 
-require_once ROOT_PATH . 'config/session.php';
-require_once ROOT_PATH . 'config/db.php';
+require_once __DIR__ . '/config/session.php';
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/functions.php'; // <--- AGREGÁ ESTA LÍNEA
+
 
 $page = $_GET['page'] ?? 'catalogo';
 
