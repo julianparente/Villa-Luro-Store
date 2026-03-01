@@ -123,8 +123,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'view' && isset($_GET['id'])) 
                         <p class="font-semibold text-gray-800"><?= htmlspecialchars($pedido['nombre']) ?></p>
                     </div>
                     <div>
-                        <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Email</p>
-                        <p class="text-gray-800"><a href="mailto:<?= htmlspecialchars($pedido['email']) ?>" class="hover:text-luxury-gold"><?= htmlspecialchars($pedido['email']) ?></a></p>
+                        <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Teléfono</p>
+                        <p class="text-gray-800"><a href="tel:<?= htmlspecialchars($pedido['email']) ?>" class="hover:text-luxury-gold"><?= htmlspecialchars($pedido['email']) ?></a></p>
                     </div>
                     <div>
                         <p class="text-gray-500 text-xs uppercase tracking-wider mb-1">Dirección de Envío</p>

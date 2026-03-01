@@ -2,8 +2,9 @@
 // public/views/admin_producto_delete.php
 
 $perfume_id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+$token = $_GET['token'] ?? '';
 
-if (!$perfume_id) {
+if (!$perfume_id || !validate_csrf_token($token)) {
     header('Location: index.php?page=admin_productos&status=error');
     exit;
 }

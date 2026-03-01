@@ -10,30 +10,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!is_dir($upload_dir)) {
         mkdir($upload_dir, 0777, true);
     }
-
     $imagenes_a_actualizar = ['logo', 'login_image', 'about_image'];
 
     foreach ($imagenes_a_actualizar as $clave) {
         if (isset($_FILES[$clave]) && $_FILES[$clave]['error'] === UPLOAD_ERR_OK) {
-            $tmp_name = $_FILES[$clave]['tmp_name'];
-            $name = basename($_FILES[$clave]['name']);
-            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            $upload_result = upload_image($_FILES[$clave], $upload_dir);
             
-            // Validar extensión
-            if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'svg'])) {
-                $new_filename = $clave . '_' . time() . '.' . $ext;
-                $target_path = $upload_dir . $new_filename;
-
-                if (move_uploaded_file($tmp_name, $target_path)) {
-                    // Actualizar base de datos
-                    $stmt = $pdo->prepare("INSERT INTO configuracion (clave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
-                    $stmt->execute([$clave, $target_path, $target_path]);
-                    $mensaje = "Imágenes actualizadas correctamente.";
-                } else {
-                    $error = "Error al mover el archivo subido.";
-                }
+            if ($upload_result['success']) {
+                $target_path = $upload_result['path'];
+                $stmt = $pdo->prepare("INSERT INTO configuracion (clave, valor) VALUES (?, ?) ON DUPLICATE KEY UPDATE valor = ?");
+                $stmt->execute([$clave, $target_path, $target_path]);
+                $mensaje = "Imágenes actualizadas correctamente.";
             } else {
-                $error = "Formato de archivo no permitido. Use JPG, PNG, WEBP o SVG.";
+                $error = $upload_result['error'];
             }
         }
     }

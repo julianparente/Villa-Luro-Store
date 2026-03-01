@@ -84,7 +84,7 @@ $items = $stmt_items->fetchAll();
                         <div class="text-sm text-gray-600 leading-relaxed">
                             <p class="font-semibold"><?= htmlspecialchars($pedido['nombre']) ?></p>
                             <p><?= htmlspecialchars($pedido['direccion']) ?></p>
-                            <p><?= htmlspecialchars($pedido['email']) ?></p>
+                            <p>Tel: <?= htmlspecialchars($pedido['email']) ?></p>
                         </div>
                     </div>
                     <div>

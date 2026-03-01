@@ -39,14 +39,17 @@ $datos_pedido = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
     $nombre = trim($_POST['nombre'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $tipo_envio = $_POST['tipo_envio'] ?? 'domicilio';
+    $telefono = trim($_POST['telefono'] ?? '');
+    $tipo_envio = $_POST['tipo_envio'] ?? 'domicilio_amba';
 
     if ($tipo_envio === 'coordinar') {
         $direccion = 'A coordinar con el vendedor (WhatsApp)';
     } else {
         $direccion = trim($_POST['direccion'] ?? '');
     }
+    
+    // Validación de teléfono (Argentina)
+    $es_valido_arg = validate_argentina_phone($telefono);
 
     $stockError = false;
     // Validar stock antes de procesar
@@ -62,15 +65,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
     }
     if ($stockError) {
         $mensaje = 'Uno o más productos no tienen suficiente stock para completar el pedido.';
-    } elseif (!$nombre || !$email || ($tipo_envio === 'domicilio' && !$direccion)) {
+    } elseif (!$nombre || !$telefono || ($tipo_envio !== 'coordinar' && !$direccion)) {
         $mensaje = 'Por favor, completa todos los datos requeridos.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $mensaje = 'El email no es válido.';
+    } elseif (!$es_valido_arg) {
+        $mensaje = 'El número de teléfono no es válido. Ingrese código de área + número (Ej: 11 1234 5678).';
     } else {
         // Guardar pedido
+        if ($tipo_envio === 'domicilio_amba') $direccion .= ' (AMBA)';
+        if ($tipo_envio === 'domicilio_interior') $direccion .= ' (Interior)';
+
         $usuario_id = isLoggedIn() ? $_SESSION['usuario_id'] : null;
         $stmt = $pdo->prepare("INSERT INTO pedidos (usuario_id, fecha, total, estado, nombre, direccion, email) VALUES (?, NOW(), ?, ?, ?, ?, ?)");
-        $stmt->execute([$usuario_id, $total, 'Pendiente de Pago', $nombre, $direccion, $email]);
+        $stmt->execute([$usuario_id, $total, 'Pendiente de Pago', $nombre, $direccion, $telefono]);
         $pedido_id = $pdo->lastInsertId();
         // Guardar productos y actualizar stock
         foreach ($carrito as $item) {
@@ -87,43 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
             $stmt->execute([$_SESSION['usuario_id']]);
         } else {
             unset($_SESSION['carrito']);
-        }
-
-        // Enviar Email con instrucciones de pago
-        if (function_exists('getMailer')) {
-            try {
-                $mail = getMailer();
-                $mail->setFrom('info@villalurostore.com', 'Villa Luro Store');
-                $mail->addAddress($email, $nombre);
-                $mail->isHTML(true);
-                $mail->Subject = "Confirmación de Pedido #$pedido_id - Villa Luro Store";
-                
-                $lista_items = '';
-                foreach ($carrito as $item) {
-                    $lista_items .= "<li>{$item['nombre']} x {$item['cantidad']}</li>";
-                }
-                
-                $mail->Body = "
-                <div style='font-family: sans-serif; color: #333;'>
-                    <h2 style='color: #D4AF37;'>¡Gracias por tu compra!</h2>
-                    <p>Hola <strong>$nombre</strong>, hemos recibido tu pedido <strong>#$pedido_id</strong>.</p>
-                    <p>Para finalizar el proceso, por favor realiza la transferencia bancaria a la siguiente cuenta:</p>
-                    <div style='background-color: #f9f9f9; border: 1px solid #ddd; padding: 15px; margin: 20px 0;'>
-                        <p style='margin: 5px 0;'><strong>Banco:</strong> Banco Provincia</p>
-                        <p style='margin: 5px 0;'><strong>CBU:</strong> 0070123400000012345678</p>
-                        <p style='margin: 5px 0;'><strong>Alias:</strong> VILLALURO.STORE</p>
-                        <p style='margin: 5px 0;'><strong>Titular:</strong> Villa Luro Store S.A.</p>
-                        <p style='margin: 5px 0;'><strong>Monto a transferir:</strong> $" . number_format($total, 2) . "</p>
-                    </div>
-                    <p>Una vez realizada, envíanos el comprobante por WhatsApp o respondiendo a este correo.</p>
-                    <h3>Resumen de compra:</h3>
-                    <ul>$lista_items</ul>
-                </div>";
-                
-                $mail->send();
-            } catch (\Throwable $e) {
-                error_log("Error enviando email: " . $e->getMessage());
-            }
         }
 
         $mensaje = '¡Gracias por tu compra! Tu pedido ha sido recibido.';
@@ -222,20 +191,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
                         </div>
 
                         <div class="group">
-                            <label for="email" class="block text-[10px] uppercase tracking-widest text-gray-400 mb-2 group-focus-within:text-luxury-gold transition-colors">Correo Electrónico</label>
-                            <input type="email" id="email" name="email" required 
+                            <label for="telefono" class="block text-[10px] uppercase tracking-widest text-gray-400 mb-2 group-focus-within:text-luxury-gold transition-colors">Número de Teléfono</label>
+                            <input type="tel" id="telefono" name="telefono" required 
                                    class="w-full border-b border-gray-200 py-3 text-lg focus:outline-none focus:border-luxury-gold transition-colors bg-transparent placeholder-gray-300 font-light"
-                                   placeholder="Ej. juan@example.com">
+                                   placeholder="Ej. +54 9 11 1234-5678">
                         </div>
 
                         <!-- Selección de Envío -->
                         <div class="py-2">
                             <label class="block text-[10px] uppercase tracking-widest text-gray-400 mb-4">Método de Entrega</label>
-                            <div class="flex flex-col sm:flex-row gap-6">
+                            <div class="flex flex-col gap-4">
                                 <label class="flex items-center cursor-pointer group">
-                                    <input type="radio" name="tipo_envio" value="domicilio" checked class="hidden peer" onchange="toggleAddress(true)">
+                                    <input type="radio" name="tipo_envio" value="domicilio_amba" checked class="hidden peer" onchange="toggleAddress(true)">
                                     <span class="w-4 h-4 border border-gray-300 rounded-full mr-3 peer-checked:bg-luxury-gold peer-checked:border-luxury-gold transition-all"></span>
-                                    <span class="text-sm group-hover:text-luxury-gold transition-colors">Envío a Domicilio</span>
+                                    <span class="text-sm group-hover:text-luxury-gold transition-colors">Envío a Domicilio (AMBA)</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer group">
+                                    <input type="radio" name="tipo_envio" value="domicilio_interior" class="hidden peer" onchange="toggleAddress(true)">
+                                    <span class="w-4 h-4 border border-gray-300 rounded-full mr-3 peer-checked:bg-luxury-gold peer-checked:border-luxury-gold transition-all"></span>
+                                    <span class="text-sm group-hover:text-luxury-gold transition-colors">Envío a Domicilio (Interior)</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer group">
                                     <input type="radio" name="tipo_envio" value="coordinar" class="hidden peer" onchange="toggleAddress(false)">
@@ -327,6 +301,21 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Validación JS de teléfono Argentina
+            const telInput = document.getElementById('telefono');
+            let clean = telInput.value.replace(/[^0-9]/g, '');
+            if (clean.startsWith('0')) clean = clean.substring(1);
+            
+            if (!(clean.length === 10 || (clean.length === 12 && clean.startsWith('54')) || (clean.length === 13 && clean.startsWith('549')))) {
+                Swal.fire({
+                    title: 'Teléfono inválido',
+                    text: 'Por favor ingrese un número válido para Argentina (Ej: 11 1234 5678)',
+                    icon: 'warning',
+                    confirmButtonColor: '#1A1A1A'
+                });
+                return;
+            }
             
             // SweetAlert2 Loader
             Swal.fire({

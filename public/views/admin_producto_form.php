@@ -19,13 +19,16 @@ if ($is_edit_mode) {
     $perfume = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$perfume) {
         // Si no se encuentra el perfume, redirigir
-        header('Location: index.php?page=admin_productos');
-        exit;
+        redirect('index.php?page=admin_productos');
     }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Recoger y sanear datos
+    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+        die("Error de seguridad: Token CSRF inválido.");
+    }
+
     $nombre = trim($_POST['nombre'] ?? '');
     $marca_id = (int)($_POST['marca_id'] ?? 0);
     $precio = filter_var($_POST['precio'] ?? 0, FILTER_VALIDATE_FLOAT);
@@ -42,13 +45,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Gestión de la imagen
         if (isset($_FILES['imagen_file']) && $_FILES['imagen_file']['error'] === UPLOAD_ERR_OK) {
             $upload_dir = 'public/img/perfumes/';
-            if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
-            $file_name = uniqid() . '-' . basename($_FILES['imagen_file']['name']);
-            $target_file = $upload_dir . $file_name;
-            if (move_uploaded_file($_FILES['imagen_file']['tmp_name'], $target_file)) {
-                $imagen_url = $target_file;
+            $upload_result = upload_image($_FILES['imagen_file'], $upload_dir);
+
+            if ($upload_result['success']) {
+                $imagen_url = $upload_result['path'];
             } else {
-                $form_error = 'Error al subir el archivo de imagen.';
+                $form_error = $upload_result['error'];
             }
         } elseif (!empty($imagen_url_input)) {
             $imagen_url = $imagen_url_input;
@@ -69,8 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute($params);
 
                 // Redirigir a la lista de productos
-                header('Location: index.php?page=admin_productos&status=' . ($is_edit_mode ? 'updated' : 'created'));
-                exit;
+                redirect('index.php?page=admin_productos&status=' . ($is_edit_mode ? 'updated' : 'created'));
 
             } catch (PDOException $e) {
                 $form_error = "Error de base de datos: " . $e->getMessage();
@@ -94,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
     <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <!-- Columna Izquierda -->
             <div class="space-y-6">

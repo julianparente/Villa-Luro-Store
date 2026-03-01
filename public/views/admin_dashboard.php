@@ -1,18 +1,6 @@
 <?php
 // public/views/admin_dashboard.php
 
-// 1. Forzar Conexión Global y Verificación Estricta
-if (!isset($pdo)) {
-    $db_path = __DIR__ . '/../../config/db.php';
-    if (file_exists($db_path)) {
-        require_once $db_path;
-    }
-    // Verificación estricta de la conexión después de intentar incluir el archivo.
-    if (!isset($pdo)) {
-        die("<div style='font-family: sans-serif; padding: 2rem; margin: 2rem; background-color: #ffe3e3; border: 2px solid #b30000; color: #b30000;'><h1>Error Crítico de Conexión</h1><p>La variable de conexión a la base de datos <strong>\$pdo no existe</strong>. Esto significa que el archivo <code>config/db.php</code> no se pudo incluir o no está creando la conexión correctamente.</p></div>");
-    }
-}
-
 // 2. Verificación de Consultas (Debug Mode)
 try {
     // 3. Mapeo de Columnas: Las siguientes consultas usan nombres de columna estándar.
@@ -41,7 +29,7 @@ try {
         <div class="bg-luxury-gold/10 text-luxury-gold p-4 rounded-full"><i class="fas fa-dollar-sign fa-2x"></i></div>
         <div>
             <p class="text-gray-500 text-sm font-semibold mb-1">Total de Ventas</p>
-            <p class="text-3xl font-bold text-gray-800">$<?= number_format($total_ventas, 2) ?></p>
+            <p class="text-3xl font-bold text-gray-800"><?= format_currency($total_ventas) ?></p>
         </div>
     </div>
     <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex items-center gap-6">
@@ -96,7 +84,7 @@ try {
                                 <?= htmlspecialchars($pedido['estado']) ?>
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-right font-semibold text-gray-700">$<?= number_format($pedido['total'], 2) ?></td>
+                        <td class="px-6 py-4 text-right font-semibold text-gray-700"><?= format_currency($pedido['total']) ?></td>
                     </tr>
                 <?php endforeach; endif; ?>
             </tbody>

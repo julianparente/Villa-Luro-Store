@@ -1,18 +1,6 @@
 <?php
 // public/views/admin_productos.php
 
-// 1. Forzar Conexión Global y Verificación Estricta
-if (!isset($pdo)) {
-    $db_path = __DIR__ . '/../../config/db.php';
-    if (file_exists($db_path)) {
-        require_once $db_path;
-    }
-    // Verificación estricta de la conexión después de intentar incluir el archivo.
-    if (!isset($pdo)) {
-        die("<div style='font-family: sans-serif; padding: 2rem; margin: 2rem; background-color: #ffe3e3; border: 2px solid #b30000; color: #b30000;'><h1>Error Crítico de Conexión</h1><p>La variable de conexión a la base de datos <strong>\$pdo no existe</strong>. Esto significa que el archivo <code>config/db.php</code> no se pudo incluir o no está creando la conexión correctamente.</p></div>");
-    }
-}
-
 // 2. Verificación de Consultas (Debug Mode)
 try {
     // Búsqueda
@@ -35,7 +23,8 @@ try {
 
 } catch (PDOException $e) {
     // Si la consulta falla, se mostrará el error SQL exacto en pantalla.
-    die("<div style='font-family: sans-serif; padding: 2rem; margin: 2rem; background-color: #ffe3e3; border: 2px solid #b30000; color: #b30000;'><h1>Error de Consulta SQL</h1><p>La consulta a la base de datos falló. Este es el error devuelto por MySQL:</p><pre style='background-color: #fff; padding: 1rem; border: 1px solid #ccc; white-space: pre-wrap; word-wrap: break-word;'>" . htmlspecialchars($e->getMessage()) . "</pre><p><strong>Consulta que falló:</strong></p><pre style='background-color: #f0f0f0; padding: 1rem; border: 1px solid #ccc;'>" . htmlspecialchars($query) . "</pre></div>");
+    error_log("Error SQL en admin_productos: " . $e->getMessage());
+    echo "<div class='bg-red-100 text-red-700 p-4 m-4 rounded'>Ocurrió un error al cargar los productos. Por favor, revise los registros del servidor.</div>";
 }
 ?>
 <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
@@ -93,7 +82,7 @@ try {
                     <td class="px-6 py-4"><img src="<?= htmlspecialchars($perfume['imagen_url']) ?>" alt="<?= htmlspecialchars($perfume['nombre']) ?>" class="h-16 w-16 object-cover rounded-md border border-gray-200"></td>
                     <td class="px-6 py-4 font-semibold text-gray-800"><?= htmlspecialchars($perfume['nombre']) ?></td>
                     <td class="px-6 py-4 text-gray-600"><?= htmlspecialchars($perfume['marca_nombre']) ?></td>
-                    <td class="px-6 py-4 text-gray-600 font-medium">$<?= number_format($perfume['precio'], 2) ?></td>
+                    <td class="px-6 py-4 text-gray-600 font-medium"><?= format_currency($perfume['precio']) ?></td>
                     <td class="px-6 py-4">
                         <span class="px-2.5 py-1 rounded-full text-xs font-bold <?= $perfume['stock'] > 10 ? 'bg-green-100 text-green-800' : ($perfume['stock'] > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') ?>">
                             <?= $perfume['stock'] ?> unidades
@@ -102,7 +91,7 @@ try {
                     <td class="px-6 py-4 text-right">
                         <div class="flex items-center justify-end gap-4">
                             <a href="index.php?page=admin_producto_form&id=<?= $perfume['id'] ?>" class="text-gray-500 hover:text-blue-600 transition-colors" title="Editar"><i class="fas fa-pencil-alt fa-lg"></i></a>
-                            <a href="index.php?page=admin_producto_delete&id=<?= $perfume['id'] ?>" class="text-gray-500 hover:text-red-600 transition-colors delete-btn" title="Eliminar"><i class="fas fa-trash-alt fa-lg"></i></a>
+                            <a href="index.php?page=admin_producto_delete&id=<?= $perfume['id'] ?>&token=<?= generate_csrf_token() ?>" class="text-gray-500 hover:text-red-600 transition-colors delete-btn" title="Eliminar"><i class="fas fa-trash-alt fa-lg"></i></a>
                         </div>
                     </td>
                 </tr>
