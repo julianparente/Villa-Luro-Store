@@ -4,6 +4,11 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
+// Asegurar que las constantes estén definidas (por si se accede directamente)
+if (!defined('SMTP_HOST')) {
+    require_once __DIR__ . '/db.php';
+}
+
 // --- Carga de PHPMailer ---
 $composer_autoload = __DIR__ . '/../vendor/autoload.php';
 
@@ -32,12 +37,12 @@ function getMailer(): PHPMailer
 
     // Configuración del servidor SMTP (usando Mailtrap como ejemplo)
     $mail->isSMTP();
-    $mail->Host       = 'sandbox.smtp.mailtrap.io'; // Host de Mailtrap
+    $mail->Host       = SMTP_HOST;
     $mail->SMTPAuth   = true;
-    $mail->Username   = 'e7c11173d25454';      // Tu usuario de Mailtrap
-    $mail->Password   = 'TU_PASSWORD_DE_MAILTRAP';      // <<== PEGA AQUÍ TU CONTRASEÑA REAL
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    $mail->Port       = 2525;                   // Puerto de Mailtrap
+    $mail->Username   = SMTP_USER;
+    $mail->Password   = SMTP_PASS;
+    $mail->SMTPSecure = SMTP_SECURE;
+    $mail->Port       = SMTP_PORT;
 
     // Codificación
     $mail->CharSet = 'UTF-8';

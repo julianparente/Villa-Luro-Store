@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 $error = 'El email no es válido.';
             } elseif (strlen($password) < 6) {
-                $error = '¡Ups! Tu contraseña es muy corta. Necesita al menos 6 caracteres para ser segura. Intenta combinar letras, números y símbolos.';
+                $error = 'La contraseña debe tener al menos 6 caracteres.';
             } elseif ($password !== $password2) {
                 $error = 'Las contraseñas no coinciden.';
             } else {
@@ -44,9 +44,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'El email ya está registrado.';
                 } else {
                     $hash = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $pdo->prepare("INSERT INTO usuarios (nombre, email, password) VALUES (?, ?, ?)");
-                    $stmt->execute([$nombre, $email, $hash]);
-                    header('Location: index.php?page=login&success=1');
+                    
+                    // 1. Generar Token
+                    $token = bin2hex(random_bytes(16));
+
+                    // 2. Insertar usuario con token y activo = 0
+                    $stmt = $pdo->prepare("INSERT INTO usuarios (nombre, email, password, token, activo) VALUES (?, ?, ?, ?, 0)");
+                    $stmt->execute([$nombre, $email, $hash, $token]);
+
+                    // 3. Enviar Email
+                    enviarMailVerificacion($email, $token, $nombre);
+
+                    // Redirigir (Nota: Si SMTPDebug está activo, esta redirección podría fallar visualmente, pero el mail debería salir)
+                    header('Location: index.php?page=login&success=verify');
                     exit;
                 }
             }

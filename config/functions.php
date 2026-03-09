@@ -135,3 +135,76 @@ function validarEmail($email, $pdo) {
 
     return [true, 'Email válido'];
 }
+
+/**
+ * Envía un correo de verificación de cuenta al usuario.
+ *
+ * @param string $email Email del destinatario.
+ * @param string $token Token de verificación generado.
+ * @param string $nombre Nombre del usuario (opcional).
+ * @return bool True si se envió correctamente, False si falló.
+ */
+function enviarMailVerificacion($email, $token, $nombre = 'Cliente') {
+    // Requerir configuración de mailer si no está cargada
+    if (!function_exists('getMailer')) {
+        require_once __DIR__ . '/mailer_config.php';
+    }
+
+    // URL base fija para desarrollo local
+    $base_url = 'http://localhost/Villa-Luro-Store';
+    $link = $base_url . "/index.php?page=verificar&token=" . $token;
+
+    $body = "
+    <div style='font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; background-color: #ffffff;'>
+        <div style='text-align: center; padding-bottom: 20px; border-bottom: 1px solid #eee;'>
+            <h1 style='color: #1A1A1A; font-family: serif; margin: 0;'>Villa Luro Store</h1>
+        </div>
+        <div style='padding: 30px 0; text-align: center;'>
+            <h2 style='color: #1A1A1A; margin-bottom: 20px;'>Verificación de Cuenta</h2>
+            <p style='color: #555; font-size: 16px; line-height: 1.5; margin-bottom: 30px;'>
+                Hola <strong>{$nombre}</strong>,<br>
+                Gracias por unirte a nosotros. Para completar tu registro, por favor confirma tu correo electrónico.
+            </p>
+            <a href='{$link}' style='background-color: #D4AF37; color: #ffffff; padding: 15px 30px; text-decoration: none; font-weight: bold; border-radius: 4px; text-transform: uppercase; font-size: 14px; display: inline-block;'>Confirmar mi Cuenta</a>
+            <p style='color: #999; font-size: 12px; margin-top: 30px;'>
+                Si el botón no funciona, copia este enlace: <br>
+                <a href='{$link}' style='color: #D4AF37;'>{$link}</a>
+            </p>
+        </div>
+        <div style='text-align: center; padding-top: 20px; border-top: 1px solid #eee; color: #aaa; font-size: 12px;'>
+            &copy; " . date('Y') . " Villa Luro Store. Todos los derechos reservados.
+        </div>
+    </div>";
+
+    try {
+        $mail = getMailer();
+        
+        // --- DEBUG MODE: Activar para ver errores en pantalla ---
+        $mail->SMTPDebug = 0; // Producción: desactivar debug
+        // $mail->Debugoutput = 'html'; // Solo para desarrollo
+
+        // Configuración explícita de credenciales Mailtrap
+        // $mail->Host       = getenv('SMTP_HOST');
+        // $mail->Port       = getenv('SMTP_PORT');
+        // $mail->Username   = getenv('SMTP_USER');
+        // $mail->Password   = getenv('SMTP_PASS');
+        // Producción: usar variables de entorno o config/mailer_config.php
+        // Ejemplo temporal (reemplazar por tus datos reales):
+        $mail->Host       = 'smtp.tudominio.com';
+        $mail->Port       = 587;
+        $mail->Username   = 'usuario@tudominio.com';
+        $mail->Password   = 'CONTRASEÑA_REAL';
+        
+        $mail->setFrom('info@villalurostore.com', 'Villa Luro Store');
+        $mail->addAddress($email, $nombre);
+        $mail->isHTML(true);
+        $mail->Subject = 'Verifica tu cuenta - Villa Luro Store';
+        $mail->Body    = $body;
+        
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        error_log("Error enviando mail de verificación: " . $mail->ErrorInfo);
+        return false;
+    }
+}
