@@ -59,28 +59,28 @@ if (isLoggedIn()) {
             </button>
 
             <nav class="hidden md:block">
-                <ul class="flex space-x-8 text-[11px] uppercase tracking-widest font-semibold">
-                    <li><a href="index.php?page=catalogo" class="nav-link hover:text-luxury-gold hover:text-sm transition-all duration-300 ease-in-out">Colección</a></li>
+                <ul class="flex space-x-8 text-xs uppercase tracking-widest font-semibold">
+                    <li><a href="index.php?page=catalogo" class="nav-link hover:text-luxury-gold transition-colors">Colección</a></li>
                     <li class="relative group">
-                        <a href="#" class="nav-link hover:text-luxury-gold hover:text-sm transition-all duration-300 ease-in-out">Marcas <i class="fas fa-chevron-down text-[8px] ml-1"></i></a>
+                        <a href="#" class="nav-link hover:text-luxury-gold transition-colors">Marcas <i class="fas fa-chevron-down text-[10px] ml-1"></i></a>
                         <ul class="absolute hidden group-hover:block bg-white shadow-xl py-4 w-48 z-50 top-full left-0 border-t-2 border-luxury-gold">
                             <?php foreach($nav_brands as $nb): ?>
-                                <li><a href="index.php?page=catalogo&marca=<?= $nb['id'] ?>" class="block px-6 py-2 text-[10px] hover:bg-luxury-bone hover:text-luxury-gold hover:text-xs transition-all duration-300 ease-in-out"><?= htmlspecialchars($nb['nombre']) ?></a></li>
+                                <li><a href="index.php?page=catalogo&marca=<?= $nb['id'] ?>" class="block px-6 py-2 text-xs hover:bg-luxury-bone hover:text-luxury-gold transition-colors"><?= htmlspecialchars($nb['nombre']) ?></a></li>
                             <?php endforeach; ?>
                             <li class="border-t border-gray-100 mt-2 pt-2">
-                                <a href="index.php?page=catalogo" class="block px-6 py-2 text-[10px] italic hover:text-luxury-gold hover:text-xs transition-all duration-300 ease-in-out">Ver todas</a>
+                                <a href="index.php?page=catalogo" class="block px-6 py-2 text-xs italic hover:text-luxury-gold transition-colors">Ver todas</a>
                             </li>
                         </ul>
                     </li>
-                    <li><a href="index.php?page=quienes-somos" class="nav-link hover:text-luxury-gold hover:text-sm transition-all duration-300 ease-in-out">Quienes Somos</a></li>
+                    <li><a href="index.php?page=quienes-somos" class="nav-link hover:text-luxury-gold transition-colors">Quienes Somos</a></li>
                     <?php if (isLoggedIn()): ?>
                         <?php if ($_SESSION['usuario_id'] == 1): ?>
-                            <li><a href="index.php?page=admin_dashboard" class="nav-link text-red-500 hover:text-red-700 hover:text-sm font-bold transition-all duration-300 ease-in-out">Panel Admin</a></li>
+                            <li><a href="index.php?page=admin_dashboard" class="nav-link text-red-500 hover:text-red-700 font-bold transition-colors">Panel Admin</a></li>
                         <?php endif; ?>
-                        <li><a href="index.php?page=mi-cuenta" class="nav-link hover:text-luxury-gold hover:text-sm transition-all duration-300 ease-in-out">Perfil</a></li>
-                        <li><a href="index.php?page=logout" class="nav-link hover:text-luxury-gold hover:text-sm transition-all duration-300 ease-in-out">Salir</a></li>
+                        <li><a href="index.php?page=mi-cuenta" class="nav-link hover:text-luxury-gold transition-colors">Perfil</a></li>
+                        <li><a href="index.php?page=logout" class="nav-link hover:text-luxury-gold transition-colors">Salir</a></li>
                     <?php else: ?>
-                        <li><a href="index.php?page=login" class="nav-link hover:text-luxury-gold hover:text-sm transition-all duration-300 ease-in-out">Acceso</a></li>
+                        <li><a href="index.php?page=login" class="nav-link hover:text-luxury-gold transition-colors">Acceso</a></li>
                     <?php endif; ?>
                     <li class="relative">
                         <a href="index.php?page=carrito" id="cart-icon-container" class="hover:text-luxury-gold transition-colors relative block">

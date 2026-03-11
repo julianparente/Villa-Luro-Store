@@ -69,8 +69,21 @@ if (!$perfume) {
                 <h2 class="text-sm uppercase tracking-[0.2em] text-gray-400 mb-2"><?= htmlspecialchars($perfume['marca_nombre']) ?></h2>
                 <h1 class="font-serif text-4xl md:text-5xl text-luxury-matte mb-6"><?= htmlspecialchars($perfume['nombre']) ?></h1>
                 
-                <div class="text-2xl text-luxury-gold font-serif mb-8">
-                    $<?= number_format($perfume['precio'], 2) ?>
+                <?php if (isset($perfume['precio_lista']) && $perfume['precio_lista'] > $perfume['precio']): 
+                    $descuento = round((($perfume['precio_lista'] - $perfume['precio']) / $perfume['precio_lista']) * 100);
+                ?>
+                    <div class="mb-4">
+                        <span class="bg-red-600 text-white text-sm font-bold px-3 py-1 rounded inline-block"><?= $descuento ?>% OFF</span>
+                    </div>
+                <?php endif; ?>
+
+                <div class="flex items-baseline gap-4 mb-8">
+                    <div class="text-3xl text-luxury-gold font-serif">
+                        $<?= number_format($perfume['precio'], 2) ?>
+                    </div>
+                    <?php if (isset($perfume['precio_lista']) && $perfume['precio_lista'] > $perfume['precio']): ?>
+                        <div class="text-xl text-gray-400 line-through">$<?= number_format($perfume['precio_lista'], 2) ?></div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="prose prose-sm text-gray-600 mb-10 font-light leading-relaxed">

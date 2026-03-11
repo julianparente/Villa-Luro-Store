@@ -16,12 +16,48 @@ if ($page === 'logout') {
     exit;
 }
 
-// --- INICIO: Lógica de procesamiento de formularios ---
-// Este bloque se ejecuta ANTES de enviar cualquier salida HTML,
-// lo que permite realizar redirecciones con header().
 $error = '';
 $mensaje = '';
 
+// --- INICIO: Lógica de acciones GET que pueden necesitar redirigir ---
+// Este bloque se ejecuta ANTES de enviar cualquier salida HTML.
+if ($page === 'admin_promociones' && isset($_GET['action']) && $_GET['action'] === 'remove' && isset($_GET['id'])) {
+    // Se verifica el permiso de admin antes de proceder
+    if (isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] == 1) {
+        $id = (int)$_GET['id'];
+        try {
+            $stmt = $pdo->prepare("UPDATE perfumes SET en_promocion = 0 WHERE id = ?");
+            $stmt->execute([$id]);
+            redirect('index.php?page=admin_promociones&status=removed');
+        } catch (PDOException $e) {
+            $error = "Error al actualizar: " . $e->getMessage();
+        }
+    }
+}
+
+if ($page === 'admin_marcas' && isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
+    if (isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] == 1) {
+        $id = (int)$_GET['id'];
+        try {
+            // Verificar si hay productos asociados antes de eliminar
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM perfumes WHERE marca_id = ?");
+            $stmt->execute([$id]);
+            if ($stmt->fetchColumn() > 0) {
+                // Usamos una variable de sesión para pasar el error a través de la redirección
+                $_SESSION['form_error'] = "No se puede eliminar la marca porque tiene productos asociados. Elimine o mueva los productos primero.";
+                redirect('index.php?page=admin_marcas');
+            } else {
+                $stmt = $pdo->prepare("DELETE FROM marcas WHERE id = ?");
+                $stmt->execute([$id]);
+                redirect('index.php?page=admin_marcas&status=deleted');
+            }
+        } catch (PDOException $e) { $error = "Error al eliminar: " . $e->getMessage(); }
+    }
+}
+
+
+
+// --- INICIO: Lógica de procesamiento de formularios POST ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($page) {
         case 'registro':
@@ -118,6 +154,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             break;
+        
+        case 'admin_marcas':
+            if (isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] == 1) {
+                $nombre = trim($_POST['nombre'] ?? '');
+                $id = $_POST['id'] ?? null;
+
+                if (empty($nombre)) {
+                    $error = "El nombre de la marca es obligatorio.";
+                } else {
+                    try {
+                        if ($id) {
+                            $stmt = $pdo->prepare("UPDATE marcas SET nombre = ? WHERE id = ?");
+                            $stmt->execute([$nombre, $id]);
+                            redirect('index.php?page=admin_marcas&status=updated');
+                        } else {
+                            $stmt = $pdo->prepare("INSERT INTO marcas (nombre) VALUES (?)");
+                            $stmt->execute([$nombre]);
+                            redirect('index.php?page=admin_marcas&status=created');
+                        }
+                    } catch (PDOException $e) { $error = "Error en base de datos: " . $e->getMessage(); }
+                }
+            }
+            break;
+
+        case 'admin_producto_form':
+            if (isset($_SESSION['usuario_id']) && $_SESSION['usuario_id'] == 1) {
+                if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
+                    die("Error de seguridad: Token CSRF inválido.");
+                }
+
+                $perfume_id = isset($_POST['id']) ? (int)$_POST['id'] : null;
+                $is_edit_mode = $perfume_id !== null;
+
+                $nombre = trim($_POST['nombre'] ?? '');
+                $marca_id = (int)($_POST['marca_id'] ?? 0);
+                $precio_lista = filter_var($_POST['precio_lista'] ?? 0, FILTER_VALIDATE_FLOAT);
+                $precio = filter_var($_POST['precio'] ?? 0, FILTER_VALIDATE_FLOAT);
+                $stock = filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT);
+                $categoria = in_array($_POST['categoria'], ['masculino', 'femenino', 'unisex']) ? $_POST['categoria'] : 'unisex';
+                $descripcion = trim($_POST['descripcion'] ?? '');
+                $imagen_url_input = trim($_POST['imagen_url_input'] ?? '');
+                $en_promocion = isset($_POST['en_promocion']) ? 1 : 0;
+                
+                $imagen_url = $_POST['current_imagen_url'] ?? '';
+
+                if (empty($nombre) || empty($marca_id) || $precio === false || $precio_lista === false || $stock === false) {
+                    $error = 'Nombre, Marca, Precios y Stock son campos obligatorios y deben ser válidos.';
+                } else {
+                    if ($en_promocion) {
+                        $stmt_promo_count = $pdo->prepare("SELECT COUNT(*) FROM perfumes WHERE en_promocion = 1 AND id != ?");
+                        $stmt_promo_count->execute([$perfume_id ?? 0]);
+                        if ($stmt_promo_count->fetchColumn() >= 3) {
+                            $error = 'No se pueden tener más de 3 perfumes en la oferta semanal. Por favor, quite uno de la promoción antes de añadir este.';
+                            $en_promocion = 0;
+                        }
+                    }
+
+                    if (isset($_FILES['imagen_file']) && $_FILES['imagen_file']['error'] === UPLOAD_ERR_OK) {
+                        $upload_result = upload_image($_FILES['imagen_file'], 'public/img/perfumes/');
+                        if ($upload_result['success']) {
+                            $imagen_url = $upload_result['path'];
+                        } else {
+                            $error = $upload_result['error'];
+                        }
+                    } elseif (!empty($imagen_url_input)) {
+                        $imagen_url = $imagen_url_input;
+                    }
+
+                    if (empty($error)) {
+                        if ($is_edit_mode) {
+                            $sql = "UPDATE perfumes SET nombre = ?, marca_id = ?, precio = ?, precio_lista = ?, stock = ?, categoria = ?, descripcion = ?, imagen_url = ?, en_promocion = ? WHERE id = ?";
+                            $params = [$nombre, $marca_id, $precio, $precio_lista, $stock, $categoria, $descripcion, $imagen_url, $en_promocion, $perfume_id];
+                        } else {
+                            $sql = "INSERT INTO perfumes (nombre, marca_id, precio, precio_lista, stock, categoria, descripcion, imagen_url, en_promocion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                            $params = [$nombre, $marca_id, $precio, $precio_lista, $stock, $categoria, $descripcion, $imagen_url, $en_promocion];
+                        }
+                        $stmt = $pdo->prepare($sql);
+                        $stmt->execute($params);
+                        redirect('index.php?page=admin_productos&status=' . ($is_edit_mode ? 'updated' : 'created'));
+                    }
+                }
+                // Si hay un error, la ejecución continúa y la vista `admin_producto_form` se renderizará,
+                // mostrando el error y repoblando el formulario.
+                $form_data_on_error = $_POST;
+                $form_data_on_error['imagen_url'] = $imagen_url;
+            }
+            break;
     }
 }
 // --- FIN: Lógica de procesamiento de formularios ---
@@ -127,7 +250,8 @@ $user = null;
 $public_protected_pages = ['mi-cuenta', 'historial-pedidos', 'finalizar-compra'];
 $admin_pages = [
     'admin_dashboard', 'admin_productos', 'admin_producto_form', 
-    'admin_marcas', 'admin_pedidos', 'admin_suscripciones', 'admin_producto_delete', 'admin_config'
+    'admin_marcas', 'admin_pedidos', 'admin_suscripciones', 'admin_producto_delete', 'admin_config',
+    'admin_promociones'
 ];
 $all_protected_pages = array_merge($public_protected_pages, $admin_pages);
 

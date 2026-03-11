@@ -31,6 +31,7 @@ $current_page = $_GET['page'] ?? 'admin_dashboard';
             <a href="index.php?page=admin_dashboard" class="sidebar-link <?= $current_page == 'admin_dashboard' ? 'active' : '' ?>"><i class="fas fa-tachometer-alt fa-fw w-6"></i><span>Resumen</span></a>
             <a href="index.php?page=admin_productos" class="sidebar-link <?= in_array($current_page, ['admin_productos', 'admin_producto_form']) ? 'active' : '' ?>"><i class="fas fa-wine-bottle fa-fw w-6"></i><span>Perfumes</span></a>
             <a href="index.php?page=admin_marcas" class="sidebar-link <?= $current_page == 'admin_marcas' ? 'active' : '' ?>"><i class="fas fa-tags fa-fw w-6"></i><span>Marcas</span></a>
+            <a href="index.php?page=admin_promociones" class="sidebar-link <?= $current_page == 'admin_promociones' ? 'active' : '' ?>"><i class="fas fa-star fa-fw w-6"></i><span>Promociones</span></a>
             <a href="index.php?page=admin_pedidos" class="sidebar-link <?= $current_page == 'admin_pedidos' ? 'active' : '' ?>"><i class="fas fa-box-open fa-fw w-6"></i><span>Pedidos</span></a>
             <a href="index.php?page=admin_suscripciones" class="sidebar-link <?= $current_page == 'admin_suscripciones' ? 'active' : '' ?>"><i class="fas fa-envelope-open-text fa-fw w-6"></i><span>Suscriptores</span></a>
             <a href="index.php?page=admin_config" class="sidebar-link <?= $current_page == 'admin_config' ? 'active' : '' ?>"><i class="fas fa-cog fa-fw w-6"></i><span>Configuración</span></a>

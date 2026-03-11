@@ -48,7 +48,7 @@ $total = 0;
 
 if (isLoggedIn()) {
     $usuario_id = $_SESSION['usuario_id'];
-    $stmt = $pdo->prepare("SELECT c.id, c.cantidad, p.nombre, p.precio, p.imagen_url, m.nombre AS marca_nombre FROM carrito c JOIN perfumes p ON c.perfume_id = p.id JOIN marcas m ON p.marca_id = m.id WHERE c.usuario_id = ?");
+    $stmt = $pdo->prepare("SELECT c.id, c.perfume_id, c.cantidad, p.nombre, p.precio, p.imagen_url, m.nombre AS marca_nombre FROM carrito c JOIN perfumes p ON c.perfume_id = p.id JOIN marcas m ON p.marca_id = m.id WHERE c.usuario_id = ?");
     $stmt->execute([$usuario_id]);
     $carrito = $stmt->fetchAll();
 } elseif (isset($_SESSION['carrito'])) {
@@ -63,10 +63,51 @@ if (isLoggedIn()) {
     }
 }
 
-// Calcular total
-foreach ($carrito as $item) {
-    $total += $item['precio'] * $item['cantidad'];
+// --- Lógica de cálculo de total con promoción ---
+$total = 0;
+$subtotal_sin_promo = 0;
+$descuento_combo = 0;
+$combo_aplicado = false;
+$precio_combo = 30000;
+
+// 1. Obtener IDs de productos en promoción
+$stmt_promo_ids = $pdo->query("SELECT id FROM perfumes WHERE en_promocion = 1 LIMIT 3");
+$promo_ids = $stmt_promo_ids->fetchAll(PDO::FETCH_COLUMN);
+
+// 2. Verificar si el combo se puede aplicar
+if (count($promo_ids) === 3) {
+    $cart_perfume_ids = array_map(function($item) {
+        // El ID del perfume puede estar en 'id' o 'perfume_id' dependiendo de si es invitado o logueado
+        return $item['perfume_id'] ?? $item['id'];
+    }, $carrito);
+
+    // Comprobar si todos los IDs de la promo están en el carrito
+    if (count(array_intersect($promo_ids, $cart_perfume_ids)) === 3) {
+        $combo_aplicado = true;
+    }
 }
+
+// 3. Calcular totales
+foreach ($carrito as $item) {
+    $item_id = $item['perfume_id'] ?? $item['id'];
+    $item_total = $item['precio'] * $item['cantidad'];
+    $subtotal_sin_promo += $item_total;
+
+    if (!$combo_aplicado || !in_array($item_id, $promo_ids)) {
+        $total += $item_total;
+    }
+}
+
+if ($combo_aplicado) {
+    $total_promo_items = array_sum(array_map(function($item) use ($promo_ids) {
+        $item_id = $item['perfume_id'] ?? $item['id'];
+        return in_array($item_id, $promo_ids) ? $item['precio'] * $item['cantidad'] : 0;
+    }, $carrito));
+    
+    $descuento_combo = $total_promo_items - $precio_combo;
+    $total = $subtotal_sin_promo - $descuento_combo;
+}
+
 ?>
 <div class="bg-white">
 <div class="container mx-auto py-24 px-6">
@@ -141,18 +182,25 @@ foreach ($carrito as $item) {
                 <div class="bg-luxury-bone p-10 sticky top-32">
                     <h3 class="font-serif text-3xl mb-8 border-b border-gray-200 pb-4">Resumen del Pedido</h3>
                     <div class="space-y-4 mb-10 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Subtotal</span>
-                            <span class="font-semibold">$<?= number_format($total, 2) ?></span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">Envío</span>
-                            <span class="text-luxury-gold uppercase text-[10px] font-bold">Gratis</span>
-                        </div>
-                        <div class="border-t border-gray-200 pt-4 flex justify-between text-xl font-bold font-serif">
-                            <span class="tracking-wider">Total</span>
-                            <span class="text-luxury-gold tracking-wider">$<?= number_format($total, 2) ?></span>
-                        </div>
+                        <?php if ($combo_aplicado): ?>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Subtotal</span>
+                                <span class="font-semibold">$<?= number_format($subtotal_sin_promo, 2) ?></span>
+                            </div>
+                            <div class="flex justify-between text-green-600">
+                                <span class="font-bold">Descuento Combo Semanal</span>
+                                <span class="font-bold">- $<?= number_format($descuento_combo, 2) ?></span>
+                            </div>
+                        <?php else: ?>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">Subtotal</span>
+                                <span class="font-semibold">$<?= number_format($total, 2) ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="border-t border-gray-200 pt-4 flex justify-between text-xl font-bold font-serif mb-6">
+                        <span class="tracking-wider">Total</span>
+                        <span class="text-luxury-gold tracking-wider">$<?= number_format($total, 2) ?></span>
                     </div>
                     <form method="get" action="index.php">
                         <input type="hidden" name="page" value="finalizar-compra">

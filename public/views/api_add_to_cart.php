@@ -18,94 +18,94 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Obtener ID del perfume
-$perfume_id = filter_input(INPUT_POST, 'perfume_id', FILTER_VALIDATE_INT);
-$cantidad = 1; // Cantidad por defecto al añadir desde el catálogo
+$perfume_ids_input = $_POST['perfume_id'] ?? null;
+$perfume_ids = [];
 
-if (!$perfume_id) {
+if (is_array($perfume_ids_input)) {
+    foreach ($perfume_ids_input as $id) {
+        if (filter_var($id, FILTER_VALIDATE_INT)) {
+            $perfume_ids[] = (int)$id;
+        }
+    }
+} elseif (filter_var($perfume_ids_input, FILTER_VALIDATE_INT)) {
+    $perfume_ids[] = (int)$perfume_ids_input;
+}
+
+if (empty($perfume_ids)) {
     echo json_encode(['success' => false, 'message' => 'Producto inválido.']);
     exit;
 }
 
 try {
-    // 1. Verificar existencia y stock del producto
-    $stmt = $pdo->prepare("SELECT stock, nombre FROM perfumes WHERE id = ?");
-    $stmt->execute([$perfume_id]);
-    $perfume = $stmt->fetch();
+    foreach ($perfume_ids as $perfume_id) {
+        $cantidad = 1; // Cantidad por defecto al añadir
 
-    if (!$perfume) {
-        echo json_encode(['success' => false, 'message' => 'El producto no existe.']);
-        exit;
-    }
+        // 1. Verificar existencia y stock del producto
+        $stmt = $pdo->prepare("SELECT stock, nombre FROM perfumes WHERE id = ?");
+        $stmt->execute([$perfume_id]);
+        $perfume = $stmt->fetch();
 
-    if ($perfume['stock'] < $cantidad) {
-        echo json_encode(['success' => false, 'message' => 'Stock insuficiente.']);
-        exit;
-    }
+        if (!$perfume || $perfume['stock'] < $cantidad) {
+            // Si uno falla, continuamos con el siguiente, pero podríamos registrar un error.
+            continue;
+        }
 
-    // 2. Añadir al carrito (Lógica para usuario logueado vs invitado)
-    // Usamos isLoggedIn() si está disponible, o verificamos la sesión manualmente
-    $is_logged = function_exists('isLoggedIn') ? isLoggedIn() : isset($_SESSION['usuario_id']);
+        // 2. Añadir al carrito (Lógica para usuario logueado vs invitado)
+        $is_logged = function_exists('isLoggedIn') ? isLoggedIn() : isset($_SESSION['usuario_id']);
 
-    if ($is_logged) {
-        $usuario_id = $_SESSION['usuario_id'];
-        
-        // Verificar si el producto ya está en el carrito del usuario
-        $stmtCheck = $pdo->prepare("SELECT id, cantidad FROM carrito WHERE usuario_id = ? AND perfume_id = ?");
-        $stmtCheck->execute([$usuario_id, $perfume_id]);
-        $item = $stmtCheck->fetch();
-
-        if ($item) {
-            // Actualizar cantidad
-            $nueva_cantidad = $item['cantidad'] + $cantidad;
+        if ($is_logged) {
+            $usuario_id = $_SESSION['usuario_id'];
             
-            // Verificar stock nuevamente para la cantidad total
-            if ($nueva_cantidad > $perfume['stock']) {
-                echo json_encode(['success' => false, 'message' => 'No hay suficiente stock para añadir más unidades.']);
-                exit;
-            }
+            // Verificar si el producto ya está en el carrito del usuario
+            $stmtCheck = $pdo->prepare("SELECT id, cantidad FROM carrito WHERE usuario_id = ? AND perfume_id = ?");
+            $stmtCheck->execute([$usuario_id, $perfume_id]);
+            $item = $stmtCheck->fetch();
 
-            $stmtUpdate = $pdo->prepare("UPDATE carrito SET cantidad = ? WHERE id = ?");
-            $stmtUpdate->execute([$nueva_cantidad, $item['id']]);
-        } else {
-            // Insertar nuevo item
-            $stmtInsert = $pdo->prepare("INSERT INTO carrito (usuario_id, perfume_id, cantidad) VALUES (?, ?, ?)");
-            $stmtInsert->execute([$usuario_id, $perfume_id, $cantidad]);
-        }
-
-        // Obtener el conteo total actualizado del carrito
-        $stmtCount = $pdo->prepare("SELECT SUM(cantidad) FROM carrito WHERE usuario_id = ?");
-        $stmtCount->execute([$usuario_id]);
-        $cart_count = (int)$stmtCount->fetchColumn();
-
-    } else {
-        // Lógica para invitados (Sesión)
-        if (!isset($_SESSION['carrito'])) {
-            $_SESSION['carrito'] = [];
-        }
-
-        $found = false;
-        foreach ($_SESSION['carrito'] as &$item) {
-            if ($item['perfume_id'] == $perfume_id) {
+            if ($item) {
+                // Actualizar cantidad
                 $nueva_cantidad = $item['cantidad'] + $cantidad;
-                
                 if ($nueva_cantidad > $perfume['stock']) {
-                    echo json_encode(['success' => false, 'message' => 'No hay suficiente stock para añadir más unidades.']);
-                    exit;
+                    $nueva_cantidad = $perfume['stock'];
                 }
-                
-                $item['cantidad'] = $nueva_cantidad;
-                $found = true;
-                break;
+                $stmtUpdate = $pdo->prepare("UPDATE carrito SET cantidad = ? WHERE id = ?");
+                $stmtUpdate->execute([$nueva_cantidad, $item['id']]);
+            } else {
+                // Insertar nuevo item
+                $stmtInsert = $pdo->prepare("INSERT INTO carrito (usuario_id, perfume_id, cantidad) VALUES (?, ?, ?)");
+                $stmtInsert->execute([$usuario_id, $perfume_id, $cantidad]);
+            }
+
+        } else {
+            // Lógica para invitados (Sesión)
+            if (!isset($_SESSION['carrito'])) {
+                $_SESSION['carrito'] = [];
+            }
+
+            $found = false;
+            foreach ($_SESSION['carrito'] as &$item) {
+                if ($item['perfume_id'] == $perfume_id) {
+                    $nueva_cantidad = $item['cantidad'] + $cantidad;
+                    if ($nueva_cantidad > $perfume['stock']) {
+                        $nueva_cantidad = $perfume['stock'];
+                    }
+                    $item['cantidad'] = $nueva_cantidad;
+                    $found = true;
+                    break;
+                }
+            }
+
+            if (!$found) {
+                $_SESSION['carrito'][] = ['perfume_id' => $perfume_id, 'cantidad' => $cantidad];
             }
         }
+    }
 
-        if (!$found) {
-            $_SESSION['carrito'][] = [
-                'perfume_id' => $perfume_id,
-                'cantidad' => $cantidad
-            ];
-        }
-
+    // Calcular conteo total después de añadir todos los productos
+    if ($is_logged) {
+        $stmtCount = $pdo->prepare("SELECT SUM(cantidad) FROM carrito WHERE usuario_id = ?");
+        $stmtCount->execute([$_SESSION['usuario_id']]);
+        $cart_count = (int)$stmtCount->fetchColumn();
+    } else {
         // Calcular total de items en sesión
         $cart_count = array_sum(array_column($_SESSION['carrito'], 'cantidad'));
     }

@@ -29,9 +29,44 @@ if (isLoggedIn()) {
         }
     }
 }
-foreach ($carrito as $item) {
-    $total += $item['precio'] * $item['cantidad'];
+
+// --- Lógica de cálculo de total con promoción (replicada de carrito.php) ---
+$total = 0;
+$subtotal_sin_promo = 0;
+$descuento_combo = 0;
+$combo_aplicado = false;
+$precio_combo = 30000;
+
+// 1. Obtener IDs de productos en promoción
+$stmt_promo_ids = $pdo->query("SELECT id FROM perfumes WHERE en_promocion = 1 LIMIT 3");
+$promo_ids = $stmt_promo_ids->fetchAll(PDO::FETCH_COLUMN);
+
+// 2. Verificar si el combo se puede aplicar
+if (count($promo_ids) === 3) {
+    $cart_perfume_ids = array_column($carrito, 'perfume_id');
+    if (count(array_intersect($promo_ids, $cart_perfume_ids)) === 3) {
+        $combo_aplicado = true;
+    }
 }
+
+// 3. Calcular totales
+foreach ($carrito as $item) {
+    $item_total = $item['precio'] * $item['cantidad'];
+    $subtotal_sin_promo += $item_total;
+
+    if (!$combo_aplicado || !in_array($item['perfume_id'], $promo_ids)) {
+        $total += $item_total;
+    }
+}
+
+if ($combo_aplicado) {
+    $total_promo_items = array_sum(array_map(function($item) use ($promo_ids) {
+        return in_array($item['perfume_id'], $promo_ids) ? $item['precio'] * $item['cantidad'] : 0;
+    }, $carrito));
+    $descuento_combo = $total_promo_items - $precio_combo;
+    $total = $subtotal_sin_promo - $descuento_combo;
+}
+// --- Fin de la lógica de promoción ---
 
 $mensaje = '';
 $pedido_realizado = false; // Bandera para controlar la vista de éxito
@@ -41,6 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
     $nombre = trim($_POST['nombre'] ?? '');
     $telefono = trim($_POST['telefono'] ?? '');
     $tipo_envio = $_POST['tipo_envio'] ?? 'domicilio_amba';
+    
+    $costo_envio = 0;
+    if ($tipo_envio === 'domicilio_amba') {
+        $costo_envio = 5000;
+    } elseif ($tipo_envio === 'domicilio_interior') {
+        $costo_envio = 10000;
+    }
 
     if ($tipo_envio === 'coordinar') {
         $direccion = 'A coordinar con el vendedor (WhatsApp)';
@@ -74,9 +116,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
         if ($tipo_envio === 'domicilio_amba') $direccion .= ' (AMBA)';
         if ($tipo_envio === 'domicilio_interior') $direccion .= ' (Interior)';
 
+        $total_pedido = $total + $costo_envio;
         $usuario_id = isLoggedIn() ? $_SESSION['usuario_id'] : null;
         $stmt = $pdo->prepare("INSERT INTO pedidos (usuario_id, fecha, total, estado, nombre, direccion, email) VALUES (?, NOW(), ?, ?, ?, ?, ?)");
-        $stmt->execute([$usuario_id, $total, 'Pendiente de Pago', $nombre, $direccion, $telefono]);
+        $stmt->execute([$usuario_id, $total_pedido, 'Pendiente de Pago', $nombre, $direccion, $telefono]);
         $pedido_id = $pdo->lastInsertId();
         // Guardar productos y actualizar stock
         foreach ($carrito as $item) {
@@ -97,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
 
         $mensaje = '¡Gracias por tu compra! Tu pedido ha sido recibido.';
         $pedido_realizado = true;
-        $datos_pedido = ['id' => $pedido_id, 'total' => $total];
+        $datos_pedido = ['id' => $pedido_id, 'total' => $total_pedido];
     }
 }
 ?>
@@ -109,10 +152,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
     <div class="container mx-auto py-16 px-6 lg:px-12">
         
         <!-- 1. Barra de Progreso Visual -->
-        <div class="flex justify-center items-center gap-4 text-[10px] uppercase tracking-[0.2em] mb-16 text-gray-400">
-            <span class="hover:text-luxury-gold transition-colors cursor-pointer">Carrito</span>
+        <div class="flex justify-center items-center gap-4 text-xs uppercase tracking-widest mb-16 text-gray-500">
+            <span class="text-gray-400 hover:text-luxury-gold transition-colors cursor-pointer">Carrito</span>
             <span class="text-gray-300">/</span>
-            <span class="font-bold text-luxury-matte">Pago</span>
+            <span class="font-bold text-luxury-matte text-sm">Pago</span>
             <span class="text-gray-300">/</span>
             <span>Confirmación</span>
         </div>
@@ -202,17 +245,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
                             <label class="block text-[10px] uppercase tracking-widest text-gray-400 mb-4">Método de Entrega</label>
                             <div class="flex flex-col gap-4">
                                 <label class="flex items-center cursor-pointer group">
-                                    <input type="radio" name="tipo_envio" value="domicilio_amba" checked class="hidden peer" onchange="toggleAddress(true)">
+                                    <input type="radio" name="tipo_envio" value="domicilio_amba" data-cost="5000" checked class="hidden peer" onchange="toggleAddress(true)">
                                     <span class="w-4 h-4 border border-gray-300 rounded-full mr-3 peer-checked:bg-luxury-gold peer-checked:border-luxury-gold transition-all"></span>
                                     <span class="text-sm group-hover:text-luxury-gold transition-colors">Envío a Domicilio (AMBA)</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer group">
-                                    <input type="radio" name="tipo_envio" value="domicilio_interior" class="hidden peer" onchange="toggleAddress(true)">
+                                    <input type="radio" name="tipo_envio" value="domicilio_interior" data-cost="10000" class="hidden peer" onchange="toggleAddress(true)">
                                     <span class="w-4 h-4 border border-gray-300 rounded-full mr-3 peer-checked:bg-luxury-gold peer-checked:border-luxury-gold transition-all"></span>
                                     <span class="text-sm group-hover:text-luxury-gold transition-colors">Envío a Domicilio (Interior)</span>
                                 </label>
                                 <label class="flex items-center cursor-pointer group">
-                                    <input type="radio" name="tipo_envio" value="coordinar" class="hidden peer" onchange="toggleAddress(false)">
+                                    <input type="radio" name="tipo_envio" value="coordinar" data-cost="0" class="hidden peer" onchange="toggleAddress(false)">
                                     <span class="w-4 h-4 border border-gray-300 rounded-full mr-3 peer-checked:bg-luxury-gold peer-checked:border-luxury-gold transition-all"></span>
                                     <span class="text-sm group-hover:text-luxury-gold transition-colors">Coordinar (WhatsApp)</span>
                                 </label>
@@ -240,8 +283,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
 
                 <!-- Columna Derecha: Resumen del Pedido -->
                 <div class="lg:col-span-5">
-                    <div class="bg-[#F9F7F2] p-8 lg:p-10 rounded-sm sticky top-24 border border-gray-100">
-                        <h2 class="font-serif text-2xl mb-8 pb-4 border-b border-gray-200/60 text-luxury-matte">Tu Selección</h2>
+                    <div class="bg-[#F9F7F2] p-8 lg:p-10 rounded-sm sticky top-24 border border-gray-100 mb-8">
+                        <h2 class="font-serif text-3xl mb-8 pb-4 border-b border-gray-200/60 text-luxury-matte">Tu Selección</h2>
                         
                         <div class="space-y-6 mb-8 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                             <?php foreach ($carrito as $item): ?>
@@ -250,11 +293,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
                                         <img src="<?= htmlspecialchars($item['imagen_url']) ?>" alt="<?= htmlspecialchars($item['nombre']) ?>" class="w-full h-full object-cover rounded-full">
                                     </div>
                                     <div class="flex-grow">
-                                        <h3 class="font-serif text-sm text-luxury-matte font-medium"><?= htmlspecialchars($item['nombre']) ?></h3>
-                                        <p class="text-[10px] uppercase tracking-wider text-gray-500 mt-0.5"><?= htmlspecialchars($item['marca_nombre']) ?></p>
-                                        <p class="text-xs text-gray-400 mt-1">Cant: <?= $item['cantidad'] ?></p>
+                                        <h3 class="font-serif text-base text-luxury-matte font-semibold"><?= htmlspecialchars($item['nombre']) ?></h3>
+                                        <p class="text-xs uppercase tracking-wider text-gray-500 mt-0.5"><?= htmlspecialchars($item['marca_nombre']) ?></p>
+                                        <p class="text-sm text-gray-500 mt-1">Cant: <?= $item['cantidad'] ?></p>
                                     </div>
-                                    <div class="text-sm font-semibold text-luxury-matte">
+                                    <div class="text-base font-bold text-luxury-matte">
                                         $<?= number_format($item['precio'] * $item['cantidad'], 2) ?>
                                     </div>
                                 </div>
@@ -262,18 +305,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($carrito)) {
                         </div>
 
                         <div class="border-t border-gray-200/60 pt-6 space-y-3">
-                            <div class="flex justify-between text-sm text-gray-600 font-light">
-                                <span>Subtotal</span>
-                                <span>$<?= number_format($total, 2) ?></span>
+                            <?php if ($combo_aplicado): ?>
+                                <div class="flex justify-between text-base text-gray-700">
+                                    <span>Subtotal</span>
+                                    <span>$<?= number_format($subtotal_sin_promo, 2) ?></span>
+                                </div>
+                                <div class="flex justify-between text-sm text-green-600">
+                                    <span class="font-bold">Descuento Combo</span>
+                                    <span class="font-bold">- $<?= number_format($descuento_combo, 2) ?></span>
+                                </div>
+                            <?php else: ?> 
+                                <div class="flex justify-between text-base text-gray-700">
+                                    <span>Subtotal</span>
+                                    <span>$<?= number_format($total, 2) ?></span>
+                                </div>
+                            <?php endif; ?>
+                            <div class="flex justify-between items-end pt-6 mt-4 border-t border-gray-200/60 font-bold">
+                                <span class="font-serif text-xl text-luxury-matte">Total</span>
+                                <span id="total-display" class="font-serif text-4xl text-luxury-matte">$<?= number_format($total + 5000, 2) ?></span>
                             </div>
-                            <div class="flex justify-between text-sm text-gray-600 font-light">
-                                <span>Envío</span>
-                                <span class="text-luxury-gold text-[10px] uppercase font-bold">Gratis</span>
-                            </div>
-                            <div class="flex justify-between items-end pt-6 mt-4 border-t border-gray-200/60">
-                                <span class="font-serif text-lg text-luxury-matte">Total</span>
-                                <span class="font-serif text-3xl font-bold text-luxury-matte">$<?= number_format($total, 2) ?></span>
-                            </div>
+                            <!-- Datos ocultos para JS -->
+                            <input type="hidden" id="base-total" value="<?= $total ?>">
+                        </div>
+                        
+                        <div class="flex justify-between mt-2 text-sm text-gray-500">
+                            <span>Costo de Envío:</span>
+                            <span id="shipping-display" class="font-semibold text-luxury-gold">$ 5.000,00</span>
                         </div>
                     </div>
                 </div>
@@ -296,7 +353,31 @@ function toggleAddress(show) {
     }
 }
 
+function updateShippingCost() {
+    const radios = document.getElementsByName('tipo_envio');
+    let shippingCost = 0;
+    for (const radio of radios) {
+        if (radio.checked) {
+            shippingCost = parseFloat(radio.getAttribute('data-cost'));
+            break;
+        }
+    }
+
+    const baseTotal = parseFloat(document.getElementById('base-total').value);
+    const total = baseTotal + shippingCost;
+
+    // Formatear moneda (estilo Argentina/ES)
+    const fmt = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+    
+    document.getElementById('shipping-display').textContent = shippingCost > 0 ? fmt.format(shippingCost) : 'Gratis / A Coordinar';
+    document.getElementById('total-display').textContent = fmt.format(total);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Listener para cambio de envío
+    const shippingRadios = document.querySelectorAll('input[name="tipo_envio"]');
+    shippingRadios.forEach(radio => radio.addEventListener('change', updateShippingCost));
+
     const form = document.getElementById('checkout-form');
     if (form) {
         form.addEventListener('submit', function(e) {

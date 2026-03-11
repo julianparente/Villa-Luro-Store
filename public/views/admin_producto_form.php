@@ -1,86 +1,34 @@
 <?php
 // public/views/admin_producto_form.php
 
+// La lógica de POST se ha movido a index.php para evitar errores de "headers already sent".
+// Las variables $error y $form_data_on_error (si existe) vienen de index.php.
+
 $is_edit_mode = isset($_GET['id']);
 $perfume_id = $is_edit_mode ? (int)$_GET['id'] : null;
+
+// Estructura por defecto
 $perfume = [
     'nombre' => '', 'marca_id' => '', 'precio' => '', 'stock' => '', 
-    'categoria' => 'unisex', 'descripcion' => '', 'imagen_url' => ''
+    'categoria' => 'unisex', 'descripcion' => '', 'imagen_url' => '', 'en_promocion' => 0, 'precio_lista' => ''
 ];
-$form_error = '';
-$form_success = '';
 
 // Obtener marcas para el dropdown
 $marcas = $pdo->query("SELECT id, nombre FROM marcas ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 
-if ($is_edit_mode) {
+// Si hubo un error en el POST, repoblar el formulario con los datos enviados.
+if (isset($form_data_on_error)) {
+    $perfume = array_merge($perfume, $form_data_on_error);
+} 
+// Si no, si estamos en modo edición, cargar los datos desde la BD.
+elseif ($is_edit_mode) {
     $stmt = $pdo->prepare("SELECT * FROM perfumes WHERE id = ?");
     $stmt->execute([$perfume_id]);
-    $perfume = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$perfume) {
-        // Si no se encuentra el perfume, redirigir
+    $db_perfume = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$db_perfume) {
         redirect('index.php?page=admin_productos');
     }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Recoger y sanear datos
-    if (!validate_csrf_token($_POST['csrf_token'] ?? '')) {
-        die("Error de seguridad: Token CSRF inválido.");
-    }
-
-    $nombre = trim($_POST['nombre'] ?? '');
-    $marca_id = (int)($_POST['marca_id'] ?? 0);
-    $precio = filter_var($_POST['precio'] ?? 0, FILTER_VALIDATE_FLOAT);
-    $stock = filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT);
-    $categoria = in_array($_POST['categoria'], ['masculino', 'femenino', 'unisex']) ? $_POST['categoria'] : 'unisex';
-    $descripcion = trim($_POST['descripcion'] ?? '');
-    $imagen_url_input = trim($_POST['imagen_url_input'] ?? '');
-    $imagen_url = $perfume['imagen_url']; // Mantener la imagen actual por defecto
-
-    // Validación
-    if (empty($nombre) || empty($marca_id) || $precio === false || $stock === false) {
-        $form_error = 'Nombre, Marca, Precio y Stock son campos obligatorios y deben ser válidos.';
-    } else {
-        // Gestión de la imagen
-        if (isset($_FILES['imagen_file']) && $_FILES['imagen_file']['error'] === UPLOAD_ERR_OK) {
-            $upload_dir = 'public/img/perfumes/';
-            $upload_result = upload_image($_FILES['imagen_file'], $upload_dir);
-
-            if ($upload_result['success']) {
-                $imagen_url = $upload_result['path'];
-            } else {
-                $form_error = $upload_result['error'];
-            }
-        } elseif (!empty($imagen_url_input)) {
-            $imagen_url = $imagen_url_input;
-        }
-
-        if (empty($form_error)) {
-            try {
-                if ($is_edit_mode) {
-                    // Actualizar
-                    $sql = "UPDATE perfumes SET nombre = ?, marca_id = ?, precio = ?, stock = ?, categoria = ?, descripcion = ?, imagen_url = ? WHERE id = ?";
-                    $params = [$nombre, $marca_id, $precio, $stock, $categoria, $descripcion, $imagen_url, $perfume_id];
-                } else {
-                    // Insertar
-                    $sql = "INSERT INTO perfumes (nombre, marca_id, precio, stock, categoria, descripcion, imagen_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
-                    $params = [$nombre, $marca_id, $precio, $stock, $categoria, $descripcion, $imagen_url];
-                }
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
-
-                // Redirigir a la lista de productos
-                redirect('index.php?page=admin_productos&status=' . ($is_edit_mode ? 'updated' : 'created'));
-
-            } catch (PDOException $e) {
-                $form_error = "Error de base de datos: " . $e->getMessage();
-            }
-        }
-    }
-    // Si hay error, re-poblar el array $perfume con los datos del POST para no perderlos
-    $perfume = $_POST;
-    $perfume['imagen_url'] = $imagen_url;
+    $perfume = $db_perfume;
 }
 ?>
 
@@ -89,13 +37,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <p class="text-gray-500 mt-2">Complete los detalles del producto a continuación.</p>
 </header>
 
-<?php if ($form_error): ?>
-    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert"><?= $form_error ?></div>
+<?php if (isset($error) && $error): ?>
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert"><?= $error ?></div>
 <?php endif; ?>
 
 <div class="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
     <form method="POST" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="<?= generate_csrf_token() ?>">
+        <?php if ($is_edit_mode): ?>
+            <input type="hidden" name="id" value="<?= $perfume_id ?>">
+        <?php endif; ?>
+        <input type="hidden" name="current_imagen_url" value="<?= htmlspecialchars($perfume['imagen_url']) ?>">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <!-- Columna Izquierda -->
             <div class="space-y-6">
@@ -112,11 +64,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="grid grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div>
-                        <label for="precio" class="block text-sm font-bold text-gray-700 mb-1">Precio</label>
-                        <input type="number" step="0.01" id="precio" name="precio" value="<?= htmlspecialchars($perfume['precio']) ?>" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-matte">
+                        <label for="precio-lista" class="block text-sm font-bold text-gray-700 mb-1">Precio Lista</label>
+                        <input type="number" step="0.01" id="precio-lista" name="precio_lista" value="<?= htmlspecialchars((string)(($perfume['precio_lista'] ?? null) ?: '20000')) ?>" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-matte">
                     </div>
+                    <div>
+                        <label for="porcentaje-off" class="block text-sm font-bold text-gray-700 mb-1">% OFF</label>
+                        <input type="number" id="porcentaje-off" value="<?= htmlspecialchars((string)($perfume['porcentaje_off'] ?? '25')) ?>" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-matte">
+                    </div>
+                    <div>
+                        <label for="precio-final" class="block text-sm font-bold text-gray-700 mb-1">Precio Final</label>
+                        <input type="number" step="0.01" id="precio-final" name="precio" value="<?= htmlspecialchars((string)(($perfume['precio'] ?? null) ?: '15000')) ?>" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-gold font-bold text-luxury-gold">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-6">
                     <div>
                         <label for="stock" class="block text-sm font-bold text-gray-700 mb-1">Stock</label>
                         <input type="number" id="stock" name="stock" value="<?= htmlspecialchars($perfume['stock']) ?>" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-matte">
@@ -133,6 +95,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  <div>
                     <label for="descripcion" class="block text-sm font-bold text-gray-700 mb-1">Descripción</label>
                     <textarea id="descripcion" name="descripcion" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-luxury-matte"><?= htmlspecialchars($perfume['descripcion']) ?></textarea>
+                </div>
+                <div class="border-t border-gray-200 pt-6">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" name="en_promocion" value="1" class="h-5 w-5 text-luxury-gold rounded border-gray-300 focus:ring-luxury-gold" <?= !empty($perfume['en_promocion']) ? 'checked' : '' ?>>
+                        <span class="font-bold text-gray-700">Pertenece a la Oferta Semanal</span>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-2 ml-8">Marque esta casilla para incluir el perfume en el combo de 3 por $30.000.</p>
                 </div>
             </div>
 
@@ -164,3 +133,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const precioListaInput = document.getElementById('precio-lista');
+    const porcentajeOffInput = document.getElementById('porcentaje-off');
+    const precioFinalInput = document.getElementById('precio-final');
+
+    function calcularPrecioFinal() {
+        const precioLista = parseFloat(precioListaInput.value) || 0;
+        const descuento = parseFloat(porcentajeOffInput.value) || 0;
+
+        if (precioLista > 0) {
+            const precioFinal = precioLista * (1 - (descuento / 100));
+            precioFinalInput.value = precioFinal.toFixed(2);
+        }
+    }
+
+    function calcularDescuento() {
+        const precioLista = parseFloat(precioListaInput.value) || 0;
+        const precioFinal = parseFloat(precioFinalInput.value) || 0;
+
+        if (precioLista > 0 && precioFinal > 0 && precioFinal < precioLista) {
+            const descuento = (1 - (precioFinal / precioLista)) * 100;
+            porcentajeOffInput.value = descuento.toFixed(2);
+        } else {
+            porcentajeOffInput.value = 0;
+        }
+    }
+
+    // Listeners
+    precioListaInput.addEventListener('input', calcularPrecioFinal);
+    porcentajeOffInput.addEventListener('input', calcularPrecioFinal);
+    precioFinalInput.addEventListener('input', calcularDescuento);
+
+    // Cálculo inicial al cargar la página para sincronizar los valores.
+    // Si hay un precio de lista y un precio final, calculamos el descuento real.
+    // De lo contrario, calculamos el precio final a partir del descuento por defecto.
+    if (parseFloat(precioListaInput.value) > 0 && parseFloat(precioFinalInput.value) > 0) {
+        calcularDescuento();
+    } else {
+        calcularPrecioFinal();
+    }
+});
+</script>

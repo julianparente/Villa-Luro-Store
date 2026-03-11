@@ -1,56 +1,21 @@
 <?php
 // public/views/admin_marcas.php
 
-// Manejo de acciones (Eliminar)
-if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['id'])) {
-    $id = (int)$_GET['id'];
-    try {
-        // Verificar si hay productos asociados antes de eliminar
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM perfumes WHERE marca_id = ?");
-        $stmt->execute([$id]);
-        if ($stmt->fetchColumn() > 0) {
-            $error = "No se puede eliminar la marca porque tiene productos asociados. Elimine o mueva los productos primero.";
-        } else {
-            $stmt = $pdo->prepare("DELETE FROM marcas WHERE id = ?");
-            $stmt->execute([$id]);
-            header('Location: index.php?page=admin_marcas&status=deleted');
-            exit;
-        }
-    } catch (PDOException $e) {
-        $error = "Error al eliminar: " . $e->getMessage();
-    }
+// La lógica de POST y DELETE se ha movido a index.php para evitar errores de "headers already sent".
+// La variable $error se define en index.php o se recupera de la sesión.
+
+// Recuperar error de la sesión (si existe) y luego limpiarlo
+if (isset($_SESSION['form_error'])) {
+    $error = $_SESSION['form_error'];
+    unset($_SESSION['form_error']);
 }
 
-// Manejo de formulario (Crear/Editar)
+// Obtener datos para el formulario de edición
 $editing_brand = null;
 if (isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id'])) {
     $stmt = $pdo->prepare("SELECT * FROM marcas WHERE id = ?");
     $stmt->execute([(int)$_GET['id']]);
     $editing_brand = $stmt->fetch();
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nombre = trim($_POST['nombre'] ?? '');
-    $id = $_POST['id'] ?? null;
-
-    if (empty($nombre)) {
-        $error = "El nombre de la marca es obligatorio.";
-    } else {
-        try {
-            if ($id) {
-                $stmt = $pdo->prepare("UPDATE marcas SET nombre = ? WHERE id = ?");
-                $stmt->execute([$nombre, $id]);
-                header('Location: index.php?page=admin_marcas&status=updated');
-            } else {
-                $stmt = $pdo->prepare("INSERT INTO marcas (nombre) VALUES (?)");
-                $stmt->execute([$nombre]);
-                header('Location: index.php?page=admin_marcas&status=created');
-            }
-            exit;
-        } catch (PDOException $e) {
-            $error = "Error en base de datos: " . $e->getMessage();
-        }
-    }
 }
 
 // Obtener todas las marcas
